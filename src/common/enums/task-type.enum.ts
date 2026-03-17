@@ -1,0 +1,9 @@
+export enum TaskType {
+  BACKEND = 'BACKEND',
+  FRONTEND = 'FRONTEND',
+  DATABASE = 'DATABASE',
+  DESIGN = 'DESIGN',
+  DEVOPS = 'DEVOPS',
+  TESTING = 'TESTING',
+  OTHER = 'OTHER',
+}
