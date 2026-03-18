@@ -15,6 +15,7 @@ import { PromptService } from '../ai/prompt.service';
 import { ToolHandlerService } from '../ai/tool-handler.service';
 import { FallbackExtractorService } from '../ai/fallback-extractor.service';
 import { ProjectsService } from '../projects/projects.service';
+import { TasksService } from '../tasks/tasks.service';
 import { SenderType, ProjectStatus } from '../common/enums';
 import { Project } from '../entities/project.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -48,6 +49,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly toolHandler: ToolHandlerService,
     private readonly fallbackExtractor: FallbackExtractorService,
     private readonly projectsService: ProjectsService,
+    private readonly tasksService: TasksService,
     @InjectRepository(Project)
     private readonly projectRepo: Repository<Project>,
   ) {}
@@ -317,6 +319,38 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       } catch (err) {
         this.logger.error(`Auto doc-gen failed: ${(err as Error).message}`);
       }
+
+      // Auto: generate tasks → assign dev → set IN_PROGRESS (skip admin approval)
+      this.tasksService.generateTasks(projectId).then(async (tasks) => {
+        this.logger.log(`Auto-generated ${tasks.length} tasks for project ${projectId}`);
+
+        // Auto set project to IN_PROGRESS (skip REVIEWING/APPROVED)
+        await this.projectRepo.update(projectId, { status: ProjectStatus.IN_PROGRESS });
+        this.logger.log(`Project ${projectId} auto-set to IN_PROGRESS`);
+
+        // Save notification message in chat
+        const devName = tasks[0]?.assignee_id ? 'dev' : 'đội dev';
+        const taskList = tasks.map(t => `• ${t.title} (${t.task_type}, ${t.priority})`).join('\n');
+        const notifyContent = `✅ Hệ thống đã tự động:\n1. Tạo tài liệu yêu cầu\n2. Tạo ${tasks.length} tasks và giao cho ${devName}\n3. Chuyển dự án sang triển khai\n\n${taskList}\n\nDự án đang được triển khai!`;
+        await this.chatService.saveMessage(conversationId, SenderType.AI, notifyContent);
+
+        // Broadcast to chat UI
+        this.broadcastToConversation(conversationId, 'new_message', {
+          conversation_id: conversationId,
+          content: notifyContent,
+          sender_type: SenderType.AI,
+          created_at: new Date().toISOString(),
+        });
+
+        this.broadcastToConversation(conversationId, 'tasks_generated', {
+          project_id: projectId,
+          count: tasks.length,
+          tasks: tasks.map(t => ({ id: t.id, title: t.title, assignee_id: t.assignee_id })),
+        });
+      }).catch((err) => {
+        this.logger.error(`Auto task-gen failed: ${(err as Error).message}`);
+      });
+
       this.broadcastToConversation(conversationId, 'collection_complete', {
         project_id: projectId,
         conversation_id: conversationId,

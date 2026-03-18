@@ -35,7 +35,7 @@ import { NotificationsModule } from './notifications/notifications.module';
           ? { rejectUnauthorized: false }
           : false,
         entities: [path.join(__dirname, 'entities/*.entity{.ts,.js}')],
-        synchronize: false,
+        synchronize: config.get('NODE_ENV') !== 'production',
         logging: config.get('NODE_ENV') === 'development' ? ['error' as const] : false,
       }),
     }),

@@ -8,6 +8,7 @@ import { CollectionData } from '../entities/collection-data.entity';
 import { Project } from '../entities/project.entity';
 import { AiModule } from '../ai/ai.module';
 import { ProjectsModule } from '../projects/projects.module';
+import { TasksModule } from '../tasks/tasks.module';
 import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
 import { ChatController } from './chat.controller';
@@ -24,6 +25,7 @@ import { ChatController } from './chat.controller';
     }),
     AiModule,
     ProjectsModule,
+    TasksModule,
   ],
   providers: [ChatService, ChatGateway],
   controllers: [ChatController],

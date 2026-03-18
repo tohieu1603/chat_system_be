@@ -74,11 +74,20 @@ export class ToolHandlerService {
     const categoryMap: Record<string, CollectionCategory> = {
       save_company_info: CollectionCategory.COMPANY_INFO,
       save_department_info: CollectionCategory.DEPARTMENTS,
+      save_employee_info: CollectionCategory.EMPLOYEES,
       save_workflow_info: CollectionCategory.WORKFLOWS,
       save_salary_info: CollectionCategory.SALARY,
       save_feature_request: CollectionCategory.FEATURES,
       save_scheduling_info: CollectionCategory.SCHEDULING,
       save_special_requirements: CollectionCategory.SPECIAL_REQUIREMENTS,
+      save_priority_info: CollectionCategory.PRIORITIES,
+      save_integration_info: CollectionCategory.SPECIAL_REQUIREMENTS,
+      save_security_requirements: CollectionCategory.SPECIAL_REQUIREMENTS,
+      save_ui_requirements: CollectionCategory.FEATURES,
+      save_report_requirements: CollectionCategory.FEATURES,
+      save_notification_requirements: CollectionCategory.SPECIAL_REQUIREMENTS,
+      save_data_migration_info: CollectionCategory.SPECIAL_REQUIREMENTS,
+      suggest_features: CollectionCategory.FEATURES,
     };
 
     if (categoryMap[name]) {
@@ -142,8 +151,23 @@ export class ToolHandlerService {
     if (!project) return { error: 'Project not found' };
 
     const progress = project.collection_progress ?? {};
-    // Mark all categories with data as 'completed'
     const categories = progress['categories'] ?? {};
+
+    // Validate: require at least 4 core categories before completing
+    const REQUIRED = ['COMPANY_INFO', 'DEPARTMENTS', 'WORKFLOWS', 'FEATURES'];
+    const collected = REQUIRED.filter(r =>
+      categories[r]?.fields_collected?.length > 0 || categories[r]?.status === 'in_progress' || categories[r]?.status === 'completed',
+    );
+    const missing = REQUIRED.filter(r => !collected.includes(r));
+    if (missing.length > 0) {
+      const labels: Record<string, string> = {
+        COMPANY_INFO: 'Thông tin công ty', DEPARTMENTS: 'Phòng ban', EMPLOYEES: 'Nhân sự',
+        WORKFLOWS: 'Quy trình làm việc', FEATURES: 'Tính năng yêu cầu', PRIORITIES: 'Ưu tiên & Timeline',
+      };
+      return { error: `Chưa đủ thông tin bắt buộc. Còn thiếu: ${missing.map(m => labels[m] || m).join(', ')}. Hãy hỏi khách hàng thêm.` };
+    }
+
+    // Mark all categories with data as 'completed'
     for (const [key, val] of Object.entries(categories)) {
       const cat = val as Record<string, any>;
       if (cat['fields_collected']?.length > 0) {
@@ -165,18 +189,20 @@ export class ToolHandlerService {
     return { success: true, status: ProjectStatus.COLLECTED, summary };
   }
 
+  /** Update project progress atomically using raw query to avoid race conditions */
   private async updateProjectProgress(
     projectId: string,
     category: CollectionCategory,
     savedData: Record<string, any>,
   ): Promise<void> {
+    // Re-read fresh data each time to avoid stale reads when multiple tools fire
     const project = await this.projectRepo.findOne({ where: { id: projectId } });
     if (!project) return;
 
-    const progress: Record<string, any> = project.collection_progress ?? {};
-    const categories: Record<string, any> = progress['categories'] ?? {};
+    const progress: Record<string, any> = { ...(project.collection_progress ?? {}) };
+    const categories: Record<string, any> = { ...(progress['categories'] ?? {}) };
 
-    const catEntry = categories[category] ?? {
+    const existing = categories[category] ?? {
       status: 'not_started',
       required: false,
       fields_collected: [],
@@ -184,26 +210,24 @@ export class ToolHandlerService {
       last_updated: null,
     };
 
-    const newFields = Object.keys(savedData).filter(
-      (k) => !catEntry['fields_collected'].includes(k),
-    );
-    catEntry['fields_collected'] = [...catEntry['fields_collected'], ...newFields];
-    catEntry['status'] = catEntry['fields_collected'].length > 0 ? 'in_progress' : 'not_started';
-    catEntry['last_updated'] = new Date().toISOString();
-    categories[category] = catEntry;
+    const prevFields: string[] = existing['fields_collected'] ?? [];
+    const newFields = Object.keys(savedData).filter(k => !prevFields.includes(k));
+    existing['fields_collected'] = [...prevFields, ...newFields];
+    existing['status'] = existing['fields_collected'].length > 0 ? 'in_progress' : 'not_started';
+    existing['last_updated'] = new Date().toISOString();
+    categories[category] = existing;
 
-    // Recalculate overall progress (always out of 9 total categories)
     const ALL_CATEGORIES = [
       'COMPANY_INFO', 'DEPARTMENTS', 'EMPLOYEES', 'WORKFLOWS',
       'SALARY', 'SCHEDULING', 'FEATURES', 'SPECIAL_REQUIREMENTS', 'PRIORITIES',
     ];
-    const TOTAL_CATS = ALL_CATEGORIES.length; // always 9
     const collectedCats = ALL_CATEGORIES.filter(
-      (key) => categories[key]?.['fields_collected']?.length > 0,
+      key => categories[key]?.['fields_collected']?.length > 0,
     ).length;
     progress['categories'] = categories;
-    progress['overall_progress'] = Math.round((collectedCats / TOTAL_CATS) * 100);
+    progress['overall_progress'] = Math.round((collectedCats / ALL_CATEGORIES.length) * 100);
 
-    await this.projectRepo.save({ ...project, collection_progress: progress });
+    // Use update with fresh data to minimize race window
+    await this.projectRepo.update(projectId, { collection_progress: progress });
   }
 }

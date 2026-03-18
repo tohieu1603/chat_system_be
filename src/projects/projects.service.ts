@@ -92,6 +92,12 @@ export class ProjectsService extends BaseService<Project> {
   ): Promise<Project & { conversation_id: string }> {
     this.logger.log(`Creating project for customer ${customerId}`);
 
+    // Giới hạn 3 dự án / user
+    const count = await this.projectRepository.count({ where: { customer_id: customerId } });
+    if (count >= 3) {
+      throw new BadRequestException('Bạn chỉ được tạo tối đa 3 dự án');
+    }
+
     const project_code = await this.generateProjectCode();
     const collection_progress = this.buildInitialProgress();
 

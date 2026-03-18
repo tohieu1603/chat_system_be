@@ -42,6 +42,17 @@ export class TasksController extends BaseController {
     return this.paginated(data, total, page, limit);
   }
 
+  /** POST /projects/:projectId/tasks/generate — AI auto-generate tasks */
+  @Post('projects/:projectId/tasks/generate')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  async generateTasks(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+  ): Promise<ApiResponse> {
+    const tasks = await this.tasksService.generateTasks(projectId);
+    return this.success(tasks, `Đã tạo ${tasks.length} tasks và giao cho dev`);
+  }
+
   /** POST /projects/:projectId/tasks — create task */
   @Post('projects/:projectId/tasks')
   async createTask(
@@ -50,6 +61,17 @@ export class TasksController extends BaseController {
   ): Promise<ApiResponse> {
     const task = await this.tasksService.createTask(projectId, dto);
     return this.success(task, 'Task created');
+  }
+
+  /** GET /tasks/all — all tasks (admin only) */
+  @Get('tasks/all')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  async getAllTasks(
+    @Query() query: QueryTasksDto,
+  ): Promise<ApiResponse> {
+    const { data, total, page, limit } = await this.tasksService.findAll(query);
+    return this.paginated(data, total, page, limit);
   }
 
   /** GET /tasks/my-tasks — tasks assigned to current DEV user */

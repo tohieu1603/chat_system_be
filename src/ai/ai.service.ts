@@ -39,7 +39,7 @@ export class AiService {
       messages,
       stream: true,
       temperature: 0.6,
-      max_tokens: 4096,
+      max_tokens: 8192,
     };
 
     if (includeTools) {
@@ -106,7 +106,7 @@ export class AiService {
       model: this.model,
       messages,
       temperature: 0.6,
-      max_tokens: 4096,
+      max_tokens: 8192,
     });
 
     return response.choices[0]?.message?.content ?? '';

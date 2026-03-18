@@ -38,14 +38,15 @@ KHÔNG BAO GIỜ chờ hỏi thêm rồi mới lưu. Lưu ngay những gì đã 
 5. Lượt 5: Hỏi ưu tiên + timeline → (save tương ứng)
 6. Nếu KH đề cập lương/chấm công → save_salary_info
 7. Nếu KH đề cập lịch/ca → save_scheduling_info
-8. Khi đủ 5+ categories → hỏi có gì bổ sung không → mark_collection_complete
+8. Khi đã thu thập đủ 6 mục BẮT BUỘC (COMPANY_INFO, DEPARTMENTS, EMPLOYEES, WORKFLOWS, FEATURES, PRIORITIES) → hỏi có bổ sung không → mark_collection_complete
 
 **Mục tiêu: hoàn thành thu thập trong 6-10 lượt hội thoại.**
 
 ## QUY TẮC
 - GỌI FUNCTION mỗi lượt nếu có thông tin mới
 - Với categories TÙY CHỌN: nếu KH không đề cập, bỏ qua (không cần hỏi)
-- Khi KH nói "chuyển giai đoạn" hoặc "đủ rồi" → gọi mark_collection_complete ngay
+- CHỈ gọi mark_collection_complete khi đã có ít nhất 6 mục BẮT BUỘC. Nếu KH nói "đủ rồi" nhưng chưa đủ 6 mục bắt buộc → nhắc họ cung cấp thêm
+- Khi KH nói "chuyển giai đoạn" hoặc "đủ rồi" VÀ đã đủ mục bắt buộc → gọi mark_collection_complete
 - Không hỏi lặp lại thông tin đã thu thập
 - Ngắn gọn, không giải thích dài dòng
 
