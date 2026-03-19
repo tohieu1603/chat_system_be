@@ -29,7 +29,10 @@ import { TalentAssessmentsModule } from './talent-assessments/talent-assessments
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: path.resolve(process.cwd(), '../.env'),
+      envFilePath: [
+        path.resolve(process.cwd(), '.env'),
+        path.resolve(process.cwd(), '../.env'),
+      ],
     }),
 
     TypeOrmModule.forRootAsync({
