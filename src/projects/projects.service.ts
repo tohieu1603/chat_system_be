@@ -175,6 +175,13 @@ export class ProjectsService extends BaseService<Project> {
     return this.update(id, { status: newStatus });
   }
 
+  async getMembers(projectId: string): Promise<ProjectMember[]> {
+    return this.memberRepository.find({
+      where: { project_id: projectId },
+      relations: ['user'],
+    });
+  }
+
   async addMember(
     projectId: string,
     userId: string,

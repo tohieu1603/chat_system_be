@@ -163,6 +163,29 @@ export class KimiChatService {
     await this.sendMessage(conv.id, userId, question, res, { sectionName, currentContent });
   }
 
+  /** Get chat statistics for a user */
+  async getStats(userId: string) {
+    const convs = await this.convRepo.find({ where: { user_id: userId }, select: ['id', 'total_messages'] });
+    const totalConversations = convs.length;
+    const totalMessages = convs.reduce((sum, c) => sum + (c.total_messages ?? 0), 0);
+
+    // Messages today
+    let messagesToday = 0;
+    if (convs.length > 0) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const convIds = convs.map((c) => c.id);
+      messagesToday = await this.msgRepo
+        .createQueryBuilder('m')
+        .where('m.conversation_id IN (:...ids)', { ids: convIds })
+        .andWhere("m.sender_type = 'USER'")
+        .andWhere('m.created_at >= :start', { start: startOfDay })
+        .getCount();
+    }
+
+    return { total_conversations: totalConversations, total_messages: totalMessages, messages_today: messagesToday };
+  }
+
   // ──────────────── Private helpers ────────────────
 
   private async assertOwnership(conversationId: string, userId: string): Promise<KimiConversation> {

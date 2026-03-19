@@ -98,6 +98,13 @@ export class ProjectsController extends BaseController {
     return this.success(doc);
   }
 
+  /** GET /projects/:id/members — list project members */
+  @Get(':id/members')
+  async getMembers(@Param('id', ParseUUIDPipe) id: string): Promise<ApiResponse> {
+    const members = await this.projectsService.getMembers(id);
+    return this.success(members);
+  }
+
   /** POST /projects/:id/members — admin adds a member */
   @Post(':id/members')
   @UseGuards(RolesGuard)

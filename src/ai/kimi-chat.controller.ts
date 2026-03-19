@@ -59,6 +59,13 @@ export class KimiChatController extends BaseController {
     super();
   }
 
+  /** GET /kimi-chat/stats — chat statistics for current user */
+  @Get('stats')
+  async getStats(@CurrentUser('id') userId: string) {
+    const stats = await this.kimiChatService.getStats(userId);
+    return this.success(stats);
+  }
+
   /** POST /kimi-chat/conversations — create a new conversation */
   @Post('conversations')
   async createConversation(

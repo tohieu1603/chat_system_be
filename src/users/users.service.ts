@@ -71,6 +71,42 @@ export class UsersService extends BaseService<User> {
     qb.skip(skip).take(limit).orderBy('user.created_at', 'DESC');
 
     const [data, total] = await qb.getManyAndCount();
+
+    // Enrich candidates with team/plan/assessment info
+    if (query.role === Role.CANDIDATE && data.length > 0) {
+      const userIds = data.map((u) => u.id);
+      try {
+        const mgr = this.repository.manager;
+
+        const [teamRows, planRows, assessRows] = await Promise.all([
+          mgr.query(
+            `SELECT tm.user_id, t.name AS team_name FROM team_members tm JOIN teams t ON t.id = tm.team_id WHERE tm.user_id = ANY($1)`,
+            [userIds],
+          ).catch(() => []),
+          mgr.query(
+            `SELECT tm.user_id, bp.status AS plan_status FROM team_members tm JOIN business_plans bp ON bp.team_id = tm.team_id WHERE tm.user_id = ANY($1)`,
+            [userIds],
+          ).catch(() => []),
+          mgr.query(
+            `SELECT ta.user_id, (ta.business_thinking + ta.marketing_skills + ta.proactivity + ta.teamwork + ta.learning_ability + ta.pressure_handling) / 6.0 AS avg_score FROM talent_assessments ta WHERE ta.user_id = ANY($1)`,
+            [userIds],
+          ).catch(() => []),
+        ]);
+
+        const teamMap = new Map(teamRows.map((r: any) => [r.user_id, r.team_name]));
+        const planMap = new Map(planRows.map((r: any) => [r.user_id, r.plan_status]));
+        const assessMap = new Map(assessRows.map((r: any) => [r.user_id, parseFloat(r.avg_score)]));
+
+        for (const u of data) {
+          (u as any).team_name = teamMap.get(u.id) ?? null;
+          (u as any).plan_status = planMap.get(u.id) ?? null;
+          (u as any).assessment_avg = assessMap.get(u.id) ?? null;
+        }
+      } catch (e) {
+        this.logger.warn(`Failed to enrich candidates: ${e}`);
+      }
+    }
+
     this.logger.log(`findAllUsers: found ${total} users (page ${page})`);
     return { data, total, page, limit };
   }

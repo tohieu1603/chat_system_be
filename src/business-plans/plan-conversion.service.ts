@@ -54,13 +54,41 @@ export class PlanConversionService {
 
     return this.dataSource.transaction(async (manager) => {
       // 1. Create project
+      // Build requirement JSON from business plan
+      const requirementJson: Record<string, any> = {
+        executive_summary: plan.executive_summary,
+        problem_statement: plan.problem_statement,
+        solution: plan.solution,
+        target_market: plan.target_market,
+        customer_persona: plan.customer_persona,
+        competitive_analysis: plan.competitive_analysis,
+        organic_marketing: plan.organic_marketing,
+        paid_advertising: plan.paid_advertising,
+        operation_workflow: plan.operation_workflow,
+        payment_system: plan.payment_system,
+        tech_requirements: plan.tech_requirements,
+        cost_structure: plan.cost_structure,
+        revenue_model: plan.revenue_model,
+        milestones: plan.milestones,
+      };
+
+      // Generate requirement document — AI enhanced or fallback to static
+      let requirementDoc: string;
+      try {
+        requirementDoc = await this.generateAIReport(plan);
+      } catch {
+        requirementDoc = this.buildRequirementDoc(plan);
+      }
+
       const project = manager.create(Project, {
         customer_id: adminUserId,
         project_name: plan.title,
         project_code: projectCode,
         description: plan.executive_summary ?? plan.solution ?? undefined,
         status: ProjectStatus.IN_PROGRESS,
-        collection_progress: {},
+        collection_progress: { completed: true, source: 'business_plan', plan_id: plan.id },
+        requirement_json: requirementJson,
+        requirement_doc_url: requirementDoc,
         priority: Priority.MEDIUM,
       });
       const savedProject = await manager.save(Project, project);
@@ -182,6 +210,88 @@ Chỉ trả JSON, không giải thích thêm. Ví dụ:
       { title: 'Thiết lập vận hành', description: plan.operation_workflow ?? 'Thiết lập quy trình vận hành', priority: Priority.MEDIUM },
       { title: 'Quản lý tài chính', description: plan.cost_structure ?? 'Theo dõi chi phí và doanh thu', priority: Priority.LOW },
     ];
+  }
+
+  /** AI generates a comprehensive business report from the plan */
+  private async generateAIReport(plan: BusinessPlan): Promise<string> {
+    const rawDoc = this.buildRequirementDoc(plan);
+
+    const prompt = `Bạn là chuyên gia tư vấn kinh doanh. Dựa trên kế hoạch kinh doanh bên dưới, hãy viết lại thành một BÁO CÁO KINH DOANH CHUYÊN NGHIỆP bằng Markdown.
+
+YÊU CẦU:
+- Viết chi tiết, chuyên nghiệp, đầy đủ phân tích
+- Mỗi phần phải có nhận xét, đánh giá, và gợi ý cải thiện
+- Thêm bảng tóm tắt tài chính (dạng markdown table)
+- Thêm phân tích SWOT
+- Thêm timeline dự án dạng bảng
+- Thêm KPI đề xuất cho 3/6/12 tháng
+- Giữ nguyên tất cả số liệu gốc, KHÔNG bịa thêm số
+- Viết bằng tiếng Việt, tối thiểu 3000 từ
+- Format markdown đẹp với heading, bold, bullet points, tables
+
+KẾ HOẠCH GỐC:
+${rawDoc}`;
+
+    const messages: Array<{ role: 'system' | 'user'; content: string }> = [
+      { role: 'system', content: 'Bạn là chuyên gia tư vấn kinh doanh. Viết báo cáo chuyên nghiệp bằng Markdown. Chỉ trả về nội dung markdown, không giải thích thêm.' },
+      { role: 'user', content: prompt },
+    ];
+
+    let fullResponse = '';
+    for await (const chunk of this.aiService.chat(messages, false)) {
+      if (chunk.content) fullResponse += chunk.content;
+      if (chunk.isDone) break;
+    }
+
+    if (fullResponse.length < 500) {
+      throw new Error('AI report too short, using fallback');
+    }
+
+    this.logger.log(`AI report generated: ${fullResponse.length} chars`);
+    return fullResponse;
+  }
+
+  /** Build markdown requirement document from business plan (fallback) */
+  private buildRequirementDoc(plan: BusinessPlan): string {
+    const s = (v: string | null | undefined) => v?.trim() || '_Chưa điền_';
+    const sections = [
+      `# Tài liệu yêu cầu dự án: ${plan.title}`,
+      `> Tạo tự động từ kế hoạch kinh doanh`,
+      '',
+      `## 1. Tổng quan`,
+      `### Tóm tắt điều hành`, s(plan.executive_summary),
+      '',
+      `## 2. Vấn đề & Giải pháp`,
+      `### Vấn đề cần giải quyết`, s(plan.problem_statement),
+      `### Giải pháp`, s(plan.solution),
+      '',
+      `## 3. Thị trường`,
+      `### Thị trường mục tiêu`, s(plan.target_market),
+      `### Chân dung khách hàng`, s(plan.customer_persona),
+      `### Phân tích cạnh tranh`, s(plan.competitive_analysis),
+      '',
+      `## 4. Marketing`,
+      `### Marketing tự nhiên`, s(plan.organic_marketing),
+      `### Quảng cáo trả phí`, s(plan.paid_advertising),
+      '',
+      `## 5. Vận hành & Kỹ thuật`,
+      `### Quy trình vận hành`, s(plan.operation_workflow),
+      `### Hệ thống thanh toán`, s(plan.payment_system),
+      `### Yêu cầu kỹ thuật`, s(plan.tech_requirements),
+      '',
+      `## 6. Tài chính`,
+      `### Cơ cấu chi phí`, s(plan.cost_structure),
+      `### Mô hình doanh thu`, s(plan.revenue_model),
+    ];
+
+    if (plan.milestones?.length) {
+      sections.push('', `## 7. Cột mốc`);
+      plan.milestones.forEach((m: any, i: number) => {
+        sections.push(`${i + 1}. **${m.name ?? m.date ?? ''}** — ${m.goal ?? m.description ?? ''}`);
+      });
+    }
+
+    return sections.join('\n');
   }
 
   private async generateProjectCode(): Promise<string> {
