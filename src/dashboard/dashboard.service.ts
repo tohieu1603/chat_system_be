@@ -9,7 +9,8 @@ import { ProjectStatus, Role } from '../common/enums';
 export interface DashboardStats {
   total_projects: number;
   active_projects: number;
-  total_customers: number;
+  total_devs: number;
+  total_candidates?: number;
   projects_by_status: Record<string, number>;
   revenue_summary: { total_paid: number; total_pending: number };
 }
@@ -28,10 +29,10 @@ export class DashboardService {
   ) {}
 
   async getStats(): Promise<DashboardStats> {
-    const [total_projects, active_projects, total_customers] = await Promise.all([
+    const [total_projects, active_projects, total_devs] = await Promise.all([
       this.projectRepo.count(),
       this.projectRepo.count({ where: { status: ProjectStatus.IN_PROGRESS } }),
-      this.userRepo.count({ where: { role: Role.CUSTOMER } }),
+      this.userRepo.count({ where: { role: Role.DEV } }),
     ]);
 
     const statusRows = await this.projectRepo
@@ -62,7 +63,7 @@ export class DashboardService {
     }
 
     this.logger.log(`getStats: total_projects=${total_projects}, active=${active_projects}`);
-    return { total_projects, active_projects, total_customers, projects_by_status, revenue_summary };
+    return { total_projects, active_projects, total_devs, projects_by_status, revenue_summary };
   }
 
   async getRecentActivity(limit = 10): Promise<Project[]> {

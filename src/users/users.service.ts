@@ -75,7 +75,7 @@ export class UsersService extends BaseService<User> {
     return { data, total, page, limit };
   }
 
-  /** Create internal user (ADMIN/DEV/FINANCE) with hashed password */
+  /** Create internal user (ADMIN/DEV) with hashed password */
   async createInternalUser(dto: CreateUserDto): Promise<User> {
     const existing = await this.findByEmail(dto.email);
     if (existing) {

@@ -3,6 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import * as path from 'path';
+import { KimiConversation } from './ai/kimi-conversation.entity';
+import { KimiMessage } from './ai/kimi-message.entity';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ProjectsModule } from './projects/projects.module';
@@ -14,6 +16,14 @@ import { TasksModule } from './tasks/tasks.module';
 import { FinanceModule } from './finance/finance.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { OwnerModule } from './owner/owner.module';
+import { BatchesModule } from './batches/batches.module';
+import { TeamsModule } from './teams/teams.module';
+import { TeamMembersModule } from './team-members/team-members.module';
+import { TeamInvitationsModule } from './team-invitations/team-invitations.module';
+import { BusinessPlansModule } from './business-plans/business-plans.module';
+import { EvaluationsModule } from './evaluations/evaluations.module';
+import { TalentAssessmentsModule } from './talent-assessments/talent-assessments.module';
 
 @Module({
   imports: [
@@ -34,7 +44,11 @@ import { NotificationsModule } from './notifications/notifications.module';
         ssl: config.get('DB_SSL') === 'true'
           ? { rejectUnauthorized: false }
           : false,
-        entities: [path.join(__dirname, 'entities/*.entity{.ts,.js}')],
+        entities: [
+          path.join(__dirname, 'entities/*.entity{.ts,.js}'),
+          KimiConversation,
+          KimiMessage,
+        ],
         synchronize: config.get('NODE_ENV') !== 'production',
         logging: config.get('NODE_ENV') === 'development' ? ['error' as const] : false,
       }),
@@ -61,6 +75,14 @@ import { NotificationsModule } from './notifications/notifications.module';
     FinanceModule,
     DashboardModule,
     NotificationsModule,
+    OwnerModule,
+    BatchesModule,
+    TeamsModule,
+    TeamMembersModule,
+    TeamInvitationsModule,
+    BusinessPlansModule,
+    EvaluationsModule,
+    TalentAssessmentsModule,
   ],
 })
 export class AppModule {}

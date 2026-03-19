@@ -3,7 +3,7 @@ import {
 } from 'class-validator';
 import { Role } from '../../common/enums';
 
-const INTERNAL_ROLES = [Role.ADMIN, Role.DEV, Role.FINANCE] as const;
+const INTERNAL_ROLES = [Role.ADMIN, Role.DEV] as const;
 type InternalRole = typeof INTERNAL_ROLES[number];
 
 export class CreateUserDto {
@@ -21,6 +21,6 @@ export class CreateUserDto {
   @IsString()
   phone?: string;
 
-  @IsEnum(INTERNAL_ROLES, { message: 'role must be ADMIN, DEV, or FINANCE' })
+  @IsEnum(INTERNAL_ROLES, { message: 'role must be ADMIN or DEV' })
   role: InternalRole;
 }

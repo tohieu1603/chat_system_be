@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -19,6 +20,7 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
+import { UpdateCandidateProfileDto } from './dto/update-candidate-profile.dto';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -40,6 +42,25 @@ export class UsersController extends BaseController {
   ) {
     const updated = await this.usersService.update(user.id, dto);
     return this.success(updated);
+  }
+
+  @Get('profile/candidate')
+  @Roles(Role.CANDIDATE)
+  @UseGuards(RolesGuard)
+  async getCandidateProfile(@CurrentUser() user: { id: string }) {
+    const found = await this.usersService.findByIdOrFail(user.id);
+    return this.success(found);
+  }
+
+  @Patch('profile/candidate')
+  @Roles(Role.CANDIDATE)
+  @UseGuards(RolesGuard)
+  async updateCandidateProfile(
+    @CurrentUser() user: { id: string },
+    @Body() dto: UpdateCandidateProfileDto,
+  ) {
+    const updated = await this.usersService.update(user.id, dto);
+    return this.success(updated, 'Candidate profile updated');
   }
 
   @Get()

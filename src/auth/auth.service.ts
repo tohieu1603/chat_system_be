@@ -47,9 +47,12 @@ export class AuthService {
       password_hash,
       full_name: dto.full_name,
       phone: dto.phone,
+      role: dto.role ?? undefined,
       company_name: dto.company_name,
       company_size: dto.company_size,
       industry: dto.industry,
+      university: dto.university,
+      year_of_study: dto.year_of_study,
     });
 
     this.logger.log(`User registered: id=${user.id}`);

@@ -145,21 +145,15 @@ export class ProjectsService extends BaseService<Project> {
       qb.andWhere('project.status = :status', { status: query.status });
     }
 
-    switch (role) {
-      case Role.CUSTOMER:
-        qb.andWhere('project.customer_id = :userId', { userId });
-        break;
-      case Role.DEV:
-        qb.innerJoin(
-          'project_members',
-          'pm',
-          'pm.project_id = project.id AND pm.user_id = :userId',
-          { userId },
-        );
-        break;
-      default:
-        break; // ADMIN, FINANCE — all projects
+    if (role === Role.DEV) {
+      qb.innerJoin(
+        'project_members',
+        'pm',
+        'pm.project_id = project.id AND pm.user_id = :userId',
+        { userId },
+      );
     }
+    // ADMIN sees all projects
 
     const [data, total] = await qb.getManyAndCount();
 

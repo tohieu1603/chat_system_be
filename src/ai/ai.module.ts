@@ -8,13 +8,18 @@ import { AiService } from './ai.service';
 import { PromptService } from './prompt.service';
 import { ToolHandlerService } from './tool-handler.service';
 import { FallbackExtractorService } from './fallback-extractor.service';
+import { KimiChatService } from './kimi-chat.service';
+import { KimiChatController } from './kimi-chat.controller';
+import { KimiConversation } from './kimi-conversation.entity';
+import { KimiMessage } from './kimi-message.entity';
 
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([CollectionData, Project, Message]),
+    TypeOrmModule.forFeature([CollectionData, Project, Message, KimiConversation, KimiMessage]),
   ],
-  providers: [AiService, PromptService, ToolHandlerService, FallbackExtractorService],
-  exports: [AiService, PromptService, ToolHandlerService, FallbackExtractorService],
+  controllers: [KimiChatController],
+  providers: [AiService, PromptService, ToolHandlerService, FallbackExtractorService, KimiChatService],
+  exports: [AiService, PromptService, ToolHandlerService, FallbackExtractorService, KimiChatService],
 })
 export class AiModule {}

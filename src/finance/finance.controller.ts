@@ -30,7 +30,7 @@ export class FinanceController extends BaseController {
 
   /** GET /projects/:projectId/finance — list finance records for project */
   @Get('projects/:projectId/finance')
-  @Roles(Role.ADMIN, Role.FINANCE)
+  @Roles(Role.ADMIN)
   async findByProject(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Query() query: PaginationDto,
@@ -41,7 +41,7 @@ export class FinanceController extends BaseController {
 
   /** POST /projects/:projectId/finance — create finance record */
   @Post('projects/:projectId/finance')
-  @Roles(Role.FINANCE)
+  @Roles(Role.ADMIN)
   async createRecord(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @CurrentUser('id') userId: string,
@@ -53,7 +53,7 @@ export class FinanceController extends BaseController {
 
   /** PUT /finance/:id — update finance record */
   @Put('finance/:id')
-  @Roles(Role.FINANCE)
+  @Roles(Role.ADMIN)
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateFinanceDto,
@@ -64,7 +64,7 @@ export class FinanceController extends BaseController {
 
   /** GET /finance/records — all finance records */
   @Get('finance/records')
-  @Roles(Role.ADMIN, Role.FINANCE)
+  @Roles(Role.ADMIN)
   async findAll(@Query() query: PaginationDto): Promise<ApiResponse> {
     const { data, total, page, limit } = await this.financeService.findAll(query);
     return this.paginated(data, total, page, limit);
@@ -72,7 +72,7 @@ export class FinanceController extends BaseController {
 
   /** GET /finance/summary — aggregated summary */
   @Get('finance/summary')
-  @Roles(Role.ADMIN, Role.FINANCE)
+  @Roles(Role.ADMIN)
   async getSummary(): Promise<ApiResponse> {
     const summary = await this.financeService.getSummary();
     return this.success(summary);

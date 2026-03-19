@@ -19,7 +19,7 @@ export class User extends BaseEntityWithUpdate {
   @Column({ type: 'varchar', length: 500, nullable: true })
   avatar_url: string;
 
-  @Column({ type: 'enum', enum: Role, default: Role.CUSTOMER })
+  @Column({ type: 'enum', enum: Role, default: Role.CANDIDATE })
   role: Role;
 
   /* Customer-only fields */
@@ -47,4 +47,32 @@ export class User extends BaseEntityWithUpdate {
 
   @Column({ type: 'timestamp', nullable: true })
   password_reset_expires: Date;
+
+  /* Candidate-specific fields */
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  university: string;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  year_of_study: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  major: string;
+
+  @Column({ type: 'text', nullable: true })
+  bio: string;
+
+  @Column({ type: 'text', array: true, nullable: true })
+  skills: string[];
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  cv_url: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  linkedin_url: string;
+
+  @Column({ type: 'text', nullable: true })
+  motivation: string;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  hours_per_week: string;
 }
