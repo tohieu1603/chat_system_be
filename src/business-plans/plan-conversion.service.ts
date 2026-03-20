@@ -212,6 +212,18 @@ Chỉ trả JSON, không giải thích thêm. Ví dụ:
     ];
   }
 
+  /** Generate report for a plan (no project/tasks creation) */
+  async generateReportForPlan(planId: string): Promise<string> {
+    const plan = await this.planRepo.findOne({ where: { id: planId } });
+    if (!plan) throw new NotFoundException(`Plan ${planId} not found`);
+
+    try {
+      return await this.generateAIReport(plan);
+    } catch {
+      return this.buildRequirementDoc(plan);
+    }
+  }
+
   /** AI generates a comprehensive business report from the plan */
   private async generateAIReport(plan: BusinessPlan): Promise<string> {
     const rawDoc = this.buildRequirementDoc(plan);

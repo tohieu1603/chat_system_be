@@ -5,6 +5,7 @@ import { BaseService } from '../common/services/base.service';
 import { Notification } from '../entities/notification.entity';
 import { NotificationType } from '../common/enums';
 import { QueryNotificationsDto } from './dto/query-notifications.dto';
+import { NotificationsGateway } from './notifications.gateway';
 
 @Injectable()
 export class NotificationsService extends BaseService<Notification> {
@@ -13,6 +14,7 @@ export class NotificationsService extends BaseService<Notification> {
   constructor(
     @InjectRepository(Notification)
     private readonly notifRepo: Repository<Notification>,
+    private readonly gateway: NotificationsGateway,
   ) {
     super(notifRepo);
   }
@@ -54,6 +56,7 @@ export class NotificationsService extends BaseService<Notification> {
       is_read: false,
     } as unknown as Notification);
     const saved = await this.notifRepo.save(notif) as Notification;
+    this.gateway.sendToUser(userId, saved);
     this.logger.log(`createNotification: userId=${userId}, type=${type}, id=${saved.id}`);
     return saved;
   }

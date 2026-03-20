@@ -12,11 +12,13 @@ import { BusinessPlan } from '../entities/business-plan.entity';
 import { TeamMember } from '../entities/team-member.entity';
 import { Team } from '../entities/team.entity';
 import { Batch } from '../entities/batch.entity';
-import { PlanStatus, BatchStatus, TeamRole } from '../common/enums';
+import { Project } from '../entities/project.entity';
+import { PlanStatus, BatchStatus, TeamRole, ProjectStatus } from '../common/enums';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
 import { UpdatePlanStatusDto } from './dto/update-plan-status.dto';
 import { QueryPlansDto } from './dto/query-plans.dto';
+import { PlanConversionService } from './plan-conversion.service';
 
 const REQUIRED_SECTIONS: (keyof BusinessPlan)[] = [
   'executive_summary',
@@ -47,6 +49,9 @@ export class BusinessPlansService extends BaseService<BusinessPlan> {
     private readonly teamRepo: Repository<Team>,
     @InjectRepository(Batch)
     private readonly batchRepo: Repository<Batch>,
+    @InjectRepository(Project)
+    private readonly projectRepo: Repository<Project>,
+    private readonly planConversionService: PlanConversionService,
   ) {
     super(planRepo);
   }
@@ -184,10 +189,50 @@ export class BusinessPlansService extends BaseService<BusinessPlan> {
       throw new BadRequestException(`Missing required sections: ${missing.join(', ')}`);
     }
 
-    return this.update(planId, {
-      status: PlanStatus.SUBMITTED,
+    // Auto-approve and generate report (no tasks — admin creates tasks later)
+    const updated = await this.update(planId, {
+      status: PlanStatus.APPROVED,
       submitted_at: new Date(),
     });
+
+    // Generate AI report in background (don't block the response)
+    this.planConversionService.generateReportForPlan(planId).then(async (report) => {
+      // Check if project already exists for this plan
+      const existing = await this.projectRepo.findOne({ where: { project_name: updated.title } });
+      if (!existing) {
+        const code = `PRJ-${Date.now().toString(36).toUpperCase()}`;
+        await this.projectRepo.save(this.projectRepo.create({
+          customer_id: userId,
+          project_name: updated.title,
+          project_code: code,
+          description: updated.executive_summary ?? undefined,
+          status: ProjectStatus.COLLECTED,
+          requirement_doc_url: report,
+          requirement_json: {
+            executive_summary: updated.executive_summary,
+            problem_statement: updated.problem_statement,
+            solution: updated.solution,
+            target_market: updated.target_market,
+            customer_persona: updated.customer_persona,
+            competitive_analysis: updated.competitive_analysis,
+            organic_marketing: updated.organic_marketing,
+            paid_advertising: updated.paid_advertising,
+            operation_workflow: updated.operation_workflow,
+            payment_system: updated.payment_system,
+            tech_requirements: updated.tech_requirements,
+            cost_structure: updated.cost_structure,
+            revenue_model: updated.revenue_model,
+            milestones: updated.milestones,
+          },
+          collection_progress: { completed: true, source: 'business_plan', plan_id: planId },
+        }));
+        this.logger.log(`Auto-created project for plan ${planId} with AI report (${report.length} chars)`);
+      }
+    }).catch((err) => {
+      this.logger.error(`Failed to generate report for plan ${planId}: ${err.message}`);
+    });
+
+    return updated;
   }
 
   /** Admin list all plans with filters */
