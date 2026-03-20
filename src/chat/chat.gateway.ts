@@ -65,7 +65,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     try {
-      const secret = this.configService.get<string>('JWT_SECRET') ?? 'default-secret';
+      const secret = this.configService.get<string>('JWT_SECRET') ?? (() => { throw new Error('JWT_SECRET is required'); })();
       const payload = this.jwtService.verify(token, { secret });
       this.clients.set(client, { userId: payload.sub ?? payload.id });
       this.logger.log(`WS connected: userId=${payload.sub ?? payload.id}`);

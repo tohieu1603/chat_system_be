@@ -23,6 +23,7 @@ import { UpdateBatchDto } from './dto/update-batch.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../common/enums';
 
+@UseGuards(JwtAuthGuard)
 @Controller('batches')
 export class BatchesController extends BaseController {
   constructor(

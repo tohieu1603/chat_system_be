@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { WsAdapter } from '@nestjs/platform-ws';
 import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 
@@ -10,15 +11,20 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
 
+  // Security headers
+  app.use(helmet());
+
   // Cookie parser (for refresh token)
   app.use(cookieParser());
 
   // Global prefix
   app.setGlobalPrefix('api');
 
-  // CORS
+  // CORS — support multiple origins for dev + production
+  const frontendUrl = config.get('FRONTEND_URL', 'http://localhost:3001');
+  const corsOrigins = frontendUrl.split(',').map((o: string) => o.trim());
   app.enableCors({
-    origin: config.get('FRONTEND_URL', 'http://localhost:3000'),
+    origin: corsOrigins,
     credentials: true,
   });
 
@@ -37,6 +43,6 @@ async function bootstrap() {
 
   const port = config.get('APP_PORT', 4000);
   await app.listen(port);
-  console.log(`Backend running on http://localhost:${port}`);
+  console.log(`Backend running on port ${port}`);
 }
 bootstrap();

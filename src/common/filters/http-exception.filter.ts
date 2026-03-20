@@ -17,9 +17,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       ? exception.getStatus()
       : HttpStatus.INTERNAL_SERVER_ERROR;
 
+    // Never leak internal error details to clients
     const message = exception instanceof HttpException
       ? exception.getResponse()
-      : 'Internal server error';
+      : 'An unexpected error occurred';
 
     response.status(status).json({
       success: false,

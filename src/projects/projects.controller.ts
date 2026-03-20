@@ -117,8 +117,10 @@ export class ProjectsController extends BaseController {
     return this.success(member, 'Member added');
   }
 
-  /** POST /projects/:id/regenerate-document — generate requirement document */
+  /** POST /projects/:id/regenerate-document — generate requirement document (ADMIN only) */
   @Post(':id/regenerate-document')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
   async regenerateDocument(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ApiResponse> {

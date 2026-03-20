@@ -20,7 +20,7 @@ import { ChatController } from './chat.controller';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET') ?? 'default-secret',
+        secret: config.get<string>('JWT_SECRET') ?? (() => { throw new Error('JWT_SECRET is required'); })(),
       }),
     }),
     AiModule,

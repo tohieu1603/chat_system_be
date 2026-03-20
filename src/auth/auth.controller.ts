@@ -7,10 +7,13 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { BaseController } from '../common/controllers/base.controller';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -27,10 +30,15 @@ const REFRESH_COOKIE_OPTIONS = {
 
 @Controller('auth')
 export class AuthController extends BaseController {
-  constructor(private readonly authService: AuthService) {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly jwtService: JwtService,
+    private readonly config: ConfigService,
+  ) {
     super();
   }
 
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('register')
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
     const data = await this.authService.register(dto);
@@ -39,6 +47,7 @@ export class AuthController extends BaseController {
     return this.success(response, 'Registration successful');
   }
 
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Post('login')
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const data = await this.authService.login(dto);
@@ -56,9 +65,8 @@ export class AuthController extends BaseController {
 
     let userId: string;
     try {
-      const payload = JSON.parse(
-        Buffer.from(refreshToken.split('.')[1], 'base64url').toString(),
-      ) as { sub: string };
+      const secret = this.config.get<string>('JWT_SECRET');
+      const payload = this.jwtService.verify(refreshToken, { secret }) as { sub: string };
       userId = payload.sub;
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
@@ -79,6 +87,7 @@ export class AuthController extends BaseController {
     return this.ok('Logged out successfully');
   }
 
+  @Throttle({ default: { ttl: 60000, limit: 3 } })
   @Post('forgot-password')
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     const result = await this.authService.forgotPassword(dto.email);

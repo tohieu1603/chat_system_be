@@ -36,7 +36,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
     }
 
     try {
-      const secret = this.configService.get<string>('JWT_SECRET') ?? 'default-secret';
+      const secret = this.configService.get<string>('JWT_SECRET') ?? (() => { throw new Error('JWT_SECRET is required'); })();
       const payload = this.jwtService.verify(token, { secret }) as Record<string, any>;
       const userId = String(payload['sub'] ?? payload['id'] ?? '');
 
