@@ -173,4 +173,12 @@ export class BatchesService extends BaseService<Batch> {
       );
     }
   }
+
+  /** Get all candidate user_ids in a batch */
+  async getCandidatesByBatch(batchId: string): Promise<{ user_id: string }[]> {
+    return this.repository.manager.query(
+      `SELECT DISTINCT tm.user_id FROM team_members tm JOIN teams t ON t.id = tm.team_id WHERE t.batch_id = $1`,
+      [batchId],
+    );
+  }
 }

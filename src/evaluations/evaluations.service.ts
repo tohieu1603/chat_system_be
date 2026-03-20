@@ -14,6 +14,8 @@ import { TeamMember } from '../entities/team-member.entity';
 import { EvaluationRecommendation, PlanStatus } from '../common/enums';
 import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 import { UpdateEvaluationDto } from './dto/update-evaluation.dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../common/enums';
 
 @Injectable()
 export class EvaluationsService extends BaseService<Evaluation> {
@@ -26,6 +28,7 @@ export class EvaluationsService extends BaseService<Evaluation> {
     private readonly planRepo: Repository<BusinessPlan>,
     @InjectRepository(TeamMember)
     private readonly teamMemberRepo: Repository<TeamMember>,
+    private readonly notificationsService: NotificationsService,
   ) {
     super(evalRepo);
   }
@@ -80,6 +83,31 @@ export class EvaluationsService extends BaseService<Evaluation> {
     // Trigger plan status transitions based on recommendation
     if (dto.recommendation) {
       await this.applyRecommendation(plan, dto.recommendation);
+    }
+
+    // Send notification to team
+    const notifType = dto.recommendation === EvaluationRecommendation.APPROVE
+      ? NotificationType.SUCCESS
+      : dto.recommendation === EvaluationRecommendation.REJECT
+        ? NotificationType.WARNING
+        : NotificationType.INFO;
+    const notifTitle = dto.recommendation === EvaluationRecommendation.APPROVE
+      ? 'Chúc mừng! Kế hoạch đã được duyệt'
+      : dto.recommendation === EvaluationRecommendation.REJECT
+        ? 'Kế hoạch cần điều chỉnh'
+        : 'Kế hoạch đã được đánh giá';
+    const notifMsg = dto.recommendation === EvaluationRecommendation.APPROVE
+      ? `Kế hoạch "${plan.title}" đã được duyệt — Xem chi tiết`
+      : dto.recommendation === EvaluationRecommendation.REJECT
+        ? `Kế hoạch "${plan.title}" cần điều chỉnh — Xem feedback`
+        : `Kế hoạch "${plan.title}" đã được đánh giá — Xem chi tiết`;
+
+    try {
+      await this.notificationsService.notifyTeamMembers(
+        plan.team_id, notifTitle, notifMsg, notifType, 'business_plan', plan.id,
+      );
+    } catch (e) {
+      this.logger.warn(`Failed to send evaluation notification: ${e}`);
     }
 
     return evaluation;

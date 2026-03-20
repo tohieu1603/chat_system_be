@@ -79,4 +79,37 @@ export class NotificationsService extends BaseService<Notification> {
     this.logger.log(`getUnreadCount: userId=${userId}, count=${count}`);
     return count;
   }
+
+  /** Notify all members of a team */
+  async notifyTeamMembers(
+    teamId: string,
+    title: string,
+    message: string,
+    type: NotificationType,
+    refType?: string,
+    refId?: string,
+  ): Promise<void> {
+    const members = await this.notifRepo.manager.query(
+      'SELECT user_id FROM team_members WHERE team_id = $1',
+      [teamId],
+    );
+    await Promise.all(
+      members.map((m: { user_id: string }) =>
+        this.createNotification(m.user_id, title, message, type, refType, refId),
+      ),
+    );
+    this.logger.log(`notifyTeamMembers: teamId=${teamId}, type=${type}, count=${members.length}`);
+  }
+
+  /** Notify a single user */
+  async notifyUser(
+    userId: string,
+    title: string,
+    message: string,
+    type: NotificationType,
+    refType?: string,
+    refId?: string,
+  ): Promise<void> {
+    await this.createNotification(userId, title, message, type, refType, refId);
+  }
 }

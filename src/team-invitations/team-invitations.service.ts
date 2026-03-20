@@ -12,6 +12,8 @@ import { TeamMember } from '../entities/team-member.entity';
 import { InvitationStatus, TeamRole } from '../common/enums';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { RespondInvitationDto } from './dto/respond-invitation.dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../common/enums';
 
 @Injectable()
 export class TeamInvitationsService extends BaseService<TeamInvitation> {
@@ -22,6 +24,7 @@ export class TeamInvitationsService extends BaseService<TeamInvitation> {
     private readonly invitationRepository: Repository<TeamInvitation>,
     @InjectRepository(TeamMember)
     private readonly teamMemberRepository: Repository<TeamMember>,
+    private readonly notificationsService: NotificationsService,
   ) {
     super(invitationRepository);
   }
@@ -80,6 +83,25 @@ export class TeamInvitationsService extends BaseService<TeamInvitation> {
     });
 
     this.logger.log(`Invitation sent to ${dto.invited_email} for team ${teamId}`);
+
+    // Notify invited user if they have an account
+    try {
+      const invitedUser = await this.invitationRepository.manager.query(
+        'SELECT id, full_name FROM users WHERE email = $1', [dto.invited_email],
+      );
+      const teamInfo = await this.invitationRepository.manager.query(
+        'SELECT name FROM teams WHERE id = $1', [teamId],
+      );
+      if (invitedUser?.[0]) {
+        await this.notificationsService.notifyUser(
+          invitedUser[0].id,
+          'Lời mời tham gia đội',
+          `Đội "${teamInfo?.[0]?.name ?? 'Unknown'}" mời bạn tham gia`,
+          NotificationType.INFO, 'team_invitation', invitation.id,
+        );
+      }
+    } catch (e) { this.logger.warn(`Invitation notification failed: ${e}`); }
+
     return invitation;
   }
 

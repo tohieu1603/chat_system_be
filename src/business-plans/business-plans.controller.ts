@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -124,5 +125,14 @@ export class BusinessPlansController extends BaseController {
   ): Promise<ApiResponse> {
     const evaluation = await this.evaluationsService.getEvaluationByPlan(planId);
     return this.success(evaluation);
+  }
+
+  /** DELETE /business-plans/:id — admin delete plan */
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @UseGuards(RolesGuard)
+  async deletePlan(@Param('id', ParseUUIDPipe) id: string): Promise<ApiResponse> {
+    await this.plansService.remove(id);
+    return this.success(null, 'Đã xóa kế hoạch');
   }
 }

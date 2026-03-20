@@ -14,6 +14,8 @@ import { BatchStatus, TeamRole } from '../common/enums';
 import { CreateTeamDto } from './dto/create-team.dto';
 import { JoinTeamDto } from './dto/join-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../common/enums';
 
 @Injectable()
 export class TeamsService extends BaseService<Team> {
@@ -24,6 +26,7 @@ export class TeamsService extends BaseService<Team> {
     private readonly teamRepository: Repository<Team>,
     @InjectRepository(TeamMember)
     private readonly teamMemberRepository: Repository<TeamMember>,
+    private readonly notificationsService: NotificationsService,
   ) {
     super(teamRepository);
   }
@@ -121,6 +124,21 @@ export class TeamsService extends BaseService<Team> {
     await this.teamMemberRepository.save(member);
 
     this.logger.log(`User ${userId} joined team ${team.id}`);
+
+    // Notify team leader
+    try {
+      const leader = await this.teamMemberRepository.findOne({ where: { team_id: team.id, role: TeamRole.LEADER } });
+      const joiner = await this.teamRepository.manager.query('SELECT full_name FROM users WHERE id = $1', [userId]);
+      if (leader && joiner?.[0]) {
+        await this.notificationsService.notifyUser(
+          leader.user_id,
+          'Thành viên mới tham gia',
+          `${joiner[0].full_name} đã tham gia đội của bạn`,
+          NotificationType.INFO, 'team', team.id,
+        );
+      }
+    } catch (e) { this.logger.warn(`Notification failed: ${e}`); }
+
     return this.findByIdOrFail(team.id, ['members', 'members.user', 'batch']);
   }
 

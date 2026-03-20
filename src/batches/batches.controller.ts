@@ -20,10 +20,15 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 import { BatchesService } from './batches.service';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { UpdateBatchDto } from './dto/update-batch.dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../common/enums';
 
 @Controller('batches')
 export class BatchesController extends BaseController {
-  constructor(private readonly batchesService: BatchesService) {
+  constructor(
+    private readonly batchesService: BatchesService,
+    private readonly notificationsService: NotificationsService,
+  ) {
     super();
   }
 
@@ -79,5 +84,25 @@ export class BatchesController extends BaseController {
   async getStats(@Param('id', ParseUUIDPipe) id: string): Promise<ApiResponse> {
     const stats = await this.batchesService.getBatchStats(id);
     return this.success(stats);
+  }
+
+  /** POST /batches/:id/notify-closing — admin sends closing notification to all candidates */
+  @Post(':id/notify-closing')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  async notifyClosing(@Param('id', ParseUUIDPipe) id: string): Promise<ApiResponse> {
+    const batch = await this.batchesService.findByIdOrFail(id);
+    const candidates = await this.batchesService.getCandidatesByBatch(id);
+    let count = 0;
+    for (const c of candidates) {
+      await this.notificationsService.notifyUser(
+        c.user_id,
+        'Đợt tuyển sắp đóng',
+        `Đợt tuyển "${batch.name}" sắp đóng — hãy nộp kế hoạch trước hạn!`,
+        NotificationType.WARNING, 'batch', id,
+      );
+      count++;
+    }
+    return this.success({ notified: count }, `Đã gửi thông báo đến ${count} ứng viên`);
   }
 }

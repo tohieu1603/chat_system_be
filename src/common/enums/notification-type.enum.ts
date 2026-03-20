@@ -5,4 +5,7 @@ export enum NotificationType {
   REVIEW_NEEDED = 'REVIEW_NEEDED',
   STATUS_CHANGED = 'STATUS_CHANGED',
   COMMENT = 'COMMENT',
+  INFO = 'INFO',
+  SUCCESS = 'SUCCESS',
+  WARNING = 'WARNING',
 }
