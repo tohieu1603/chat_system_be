@@ -53,8 +53,10 @@ export class TasksController extends BaseController {
     return this.success(tasks, `Đã tạo ${tasks.length} tasks và giao cho dev`);
   }
 
-  /** POST /projects/:projectId/tasks — create task */
+  /** POST /projects/:projectId/tasks — create task (admin only) */
   @Post('projects/:projectId/tasks')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
   async createTask(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @Body() dto: CreateTaskDto,
@@ -91,8 +93,10 @@ export class TasksController extends BaseController {
     return this.success(task);
   }
 
-  /** PUT /tasks/:id — update task */
+  /** PUT /tasks/:id — update task (admin only) */
   @Put('tasks/:id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateTaskDto,

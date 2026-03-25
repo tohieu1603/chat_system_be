@@ -54,7 +54,7 @@ import { TalentAssessmentsModule } from './talent-assessments/talent-assessments
           KimiConversation,
           KimiMessage,
         ],
-        synchronize: config.get('NODE_ENV') !== 'production',
+        synchronize: config.get('NODE_ENV') === 'development',
         logging: config.get('NODE_ENV') === 'development' ? ['error' as const] : false,
       }),
     }),

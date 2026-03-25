@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   ParseUUIDPipe,
@@ -78,10 +79,20 @@ export class TeamsController extends BaseController {
     return this.success(team, 'Team updated');
   }
 
-  /** GET /teams/:id — team detail with members */
+  /** GET /teams/:id — team detail with members (admin or team member) */
   @Get(':id')
-  async getTeam(@Param('id', ParseUUIDPipe) id: string): Promise<ApiResponse> {
+  async getTeam(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
+  ): Promise<ApiResponse> {
     const team = await this.teamsService.getTeamDetail(id);
+    if (role !== Role.ADMIN) {
+      const isMember = team.members?.some((m: any) => m.user_id === userId);
+      if (!isMember) {
+        throw new ForbiddenException('Access denied');
+      }
+    }
     return this.success(team);
   }
 

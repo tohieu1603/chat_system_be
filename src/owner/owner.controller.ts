@@ -3,6 +3,8 @@ import {
   Get,
   Query,
   UseGuards,
+  ParseIntPipe,
+  DefaultValuePipe,
 } from '@nestjs/common';
 import { BaseController } from '../common/controllers/base.controller';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -27,13 +29,12 @@ export class OwnerController extends BaseController {
 
   @Get('projects')
   async getProjects(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
-    const p = page ? parseInt(page, 10) : 1;
-    const l = limit ? parseInt(limit, 10) : 20;
-    const { data, total } = await this.ownerService.getProjects(p, l);
-    return this.paginated(data, total, p, l);
+    const l = Math.min(limit, 100);
+    const { data, total } = await this.ownerService.getProjects(page, l);
+    return this.paginated(data, total, page, l);
   }
 
   @Get('finance/summary')
@@ -44,23 +45,21 @@ export class OwnerController extends BaseController {
 
   @Get('batches')
   async getBatches(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
-    const p = page ? parseInt(page, 10) : 1;
-    const l = limit ? parseInt(limit, 10) : 20;
-    const { data, total } = await this.ownerService.getBatches(p, l);
-    return this.paginated(data, total, p, l);
+    const l = Math.min(limit, 100);
+    const { data, total } = await this.ownerService.getBatches(page, l);
+    return this.paginated(data, total, page, l);
   }
 
   @Get('candidates')
   async getCandidates(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
-    const p = page ? parseInt(page, 10) : 1;
-    const l = limit ? parseInt(limit, 10) : 20;
-    const { data, total } = await this.ownerService.getCandidates(p, l);
-    return this.paginated(data, total, p, l);
+    const l = Math.min(limit, 100);
+    const { data, total } = await this.ownerService.getCandidates(page, l);
+    return this.paginated(data, total, page, l);
   }
 }

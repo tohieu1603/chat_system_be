@@ -8,6 +8,7 @@ import {
   IsDateString,
   IsArray,
   Min,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { TaskType, Priority } from '../../common/enums';
@@ -15,10 +16,12 @@ import { TaskType, Priority } from '../../common/enums';
 export class CreateTaskDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(200)
   title: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(5000)
   description?: string;
 
   @IsOptional()

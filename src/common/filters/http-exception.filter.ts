@@ -1,16 +1,18 @@
 import {
-  ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus,
+  ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(GlobalExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
 
     if (!(exception instanceof HttpException)) {
-      console.error('[GlobalExceptionFilter] Unhandled error:', exception);
+      this.logger.error('Unhandled error:', exception);
     }
 
     const status = exception instanceof HttpException

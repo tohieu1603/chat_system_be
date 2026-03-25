@@ -24,6 +24,7 @@ import OpenAI from 'openai';
 
 interface ClientMeta {
   userId: string;
+  role: string;
   conversationId?: string;
 }
 
@@ -39,6 +40,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private readonly logger = new Logger(ChatGateway.name);
   private readonly clients = new Map<WebSocket, ClientMeta>();
+  private readonly messageTimestamps = new Map<string, number[]>();
+
+  private isRateLimited(userId: string): boolean {
+    const now = Date.now();
+    const windowMs = 60_000; // 1 minute
+    const maxMessages = 15;
+    const timestamps = this.messageTimestamps.get(userId) ?? [];
+    const recent = timestamps.filter((t) => now - t < windowMs);
+    recent.push(now);
+    this.messageTimestamps.set(userId, recent);
+    return recent.length > maxMessages;
+  }
 
   constructor(
     private readonly jwtService: JwtService,
@@ -67,7 +80,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const secret = this.configService.get<string>('JWT_SECRET') ?? (() => { throw new Error('JWT_SECRET is required'); })();
       const payload = this.jwtService.verify(token, { secret });
-      this.clients.set(client, { userId: payload.sub ?? payload.id });
+      this.clients.set(client, { userId: payload.sub ?? payload.id, role: payload.role ?? 'CANDIDATE' });
       this.logger.log(`WS connected: userId=${payload.sub ?? payload.id}`);
 
       client.on('message', (raw: WebSocket.RawData) => {
@@ -113,7 +126,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
     } catch (err) {
       this.logger.error(`Error handling event ${event}: ${(err as Error).message}`);
-      this.send(client, 'error', { code: 500, message: (err as Error).message });
+      this.send(client, 'error', { code: 500, message: 'An unexpected error occurred' });
     }
   }
 
@@ -127,6 +140,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const meta = this.clients.get(client);
     if (!meta) return;
 
+    // Ownership check: verify user owns the project linked to this conversation
+    if (meta.role !== 'ADMIN') {
+      const conversation = await this.chatService.findById(conversationId, ['project']);
+      if (!conversation) {
+        this.send(client, 'error', { code: 404, message: 'Conversation not found' });
+        return;
+      }
+      const project = await this.projectRepo.findOne({ where: { id: conversation.project_id } });
+      if (!project || project.customer_id !== meta.userId) {
+        this.send(client, 'error', { code: 403, message: 'Access denied' });
+        return;
+      }
+    }
+
     meta.conversationId = conversationId;
     this.logger.log(`User ${meta.userId} joined conversation ${conversationId}`);
     this.send(client, 'joined', { conversation_id: conversationId });
@@ -136,11 +163,21 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const meta = this.clients.get(client);
     if (!meta) return;
 
+    if (this.isRateLimited(meta.userId)) {
+      this.send(client, 'error', { code: 429, message: 'Too many messages. Please wait a moment.' });
+      return;
+    }
+
     const conversationId = (data['conversation_id'] as string) ?? meta.conversationId;
     const content = data['content'] as string;
 
     if (!conversationId || !content?.trim()) {
       this.send(client, 'error', { code: 400, message: 'conversation_id and content required' });
+      return;
+    }
+
+    if (content.length > 10000) {
+      this.send(client, 'error', { code: 400, message: 'Message too long (max 10000 characters)' });
       return;
     }
 

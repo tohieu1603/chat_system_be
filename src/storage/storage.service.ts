@@ -18,8 +18,11 @@ export class StorageService implements OnModuleInit {
   constructor(private readonly config: ConfigService) {
     const host = config.get<string>('MINIO_ENDPOINT') ?? 'localhost';
     const port = config.get<number>('MINIO_PORT') ?? 9000;
-    const accessKeyId = config.get<string>('MINIO_ACCESS_KEY') ?? 'minioadmin';
-    const secretAccessKey = config.get<string>('MINIO_SECRET_KEY') ?? 'minioadmin';
+    const accessKeyId = config.get<string>('MINIO_ACCESS_KEY');
+    const secretAccessKey = config.get<string>('MINIO_SECRET_KEY');
+    if (!accessKeyId || !secretAccessKey) {
+      throw new Error('MINIO_ACCESS_KEY and MINIO_SECRET_KEY are required');
+    }
 
     this.bucket = config.get<string>('MINIO_BUCKET') ?? 'operis';
     this.endpoint = `http://${host}:${port}`;

@@ -152,6 +152,9 @@ export class ProjectsService extends BaseService<Project> {
         'pm.project_id = project.id AND pm.user_id = :userId',
         { userId },
       );
+    } else if (role !== Role.ADMIN) {
+      // CANDIDATE/CUSTOMER only sees own projects
+      qb.andWhere('project.customer_id = :userId', { userId });
     }
     // ADMIN sees all projects
 

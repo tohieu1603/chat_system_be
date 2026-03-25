@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Param,
   ParseUUIDPipe,
@@ -49,17 +50,24 @@ export class TalentAssessmentsController extends BaseController {
     return this.paginated(data, total, page, limit);
   }
 
-  /** GET /talent-assessments/user/:userId — get assessments for a candidate */
+  /** GET /talent-assessments/user/:userId — get assessments for a candidate (admin or self) */
   @Get('user/:userId')
   async getByUser(
     @Param('userId', ParseUUIDPipe) userId: string,
+    @CurrentUser('id') callerId: string,
+    @CurrentUser('role') role: string,
   ): Promise<ApiResponse> {
+    if (role !== Role.ADMIN && callerId !== userId) {
+      throw new ForbiddenException('Access denied');
+    }
     const assessments = await this.assessmentsService.getAssessmentsByUser(userId);
     return this.success(assessments);
   }
 
-  /** GET /talent-assessments/:id — get assessment detail */
+  /** GET /talent-assessments/:id — get assessment detail (admin only) */
   @Get(':id')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
   async findOne(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ApiResponse> {

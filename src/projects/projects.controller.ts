@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Param,
   ParseUUIDPipe,
@@ -30,6 +31,14 @@ export class ProjectsController extends BaseController {
     super();
   }
 
+  private async assertAccess(projectId: string, userId: string, role: string): Promise<void> {
+    if (role === Role.ADMIN) return;
+    const project = await this.projectsService.findByIdOrFail(projectId);
+    if (project.customer_id !== userId) {
+      throw new ForbiddenException('Access denied');
+    }
+  }
+
   /** GET /projects — list projects filtered by caller's role */
   @Get()
   async findAll(
@@ -57,7 +66,12 @@ export class ProjectsController extends BaseController {
 
   /** GET /projects/:id — project detail with customer */
   @Get(':id')
-  async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<ApiResponse> {
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
+  ): Promise<ApiResponse> {
+    await this.assertAccess(id, userId, role);
     const project = await this.projectsService.findByIdOrFail(id, ['customer']);
     return this.success(project);
   }
@@ -66,8 +80,11 @@ export class ProjectsController extends BaseController {
   @Put(':id')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
     @Body() dto: UpdateProjectDto,
   ): Promise<ApiResponse> {
+    await this.assertAccess(id, userId, role);
     const project = await this.projectsService.update(id, dto);
     return this.success(project, 'Project updated');
   }
@@ -86,21 +103,36 @@ export class ProjectsController extends BaseController {
 
   /** GET /projects/:id/progress — collection progress */
   @Get(':id/progress')
-  async getProgress(@Param('id', ParseUUIDPipe) id: string): Promise<ApiResponse> {
+  async getProgress(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
+  ): Promise<ApiResponse> {
+    await this.assertAccess(id, userId, role);
     const progress = await this.projectsService.getProgress(id);
     return this.success(progress);
   }
 
   /** GET /projects/:id/document — requirement document info */
   @Get(':id/document')
-  async getDocument(@Param('id', ParseUUIDPipe) id: string): Promise<ApiResponse> {
+  async getDocument(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
+  ): Promise<ApiResponse> {
+    await this.assertAccess(id, userId, role);
     const doc = await this.projectsService.getDocument(id);
     return this.success(doc);
   }
 
   /** GET /projects/:id/members — list project members */
   @Get(':id/members')
-  async getMembers(@Param('id', ParseUUIDPipe) id: string): Promise<ApiResponse> {
+  async getMembers(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
+  ): Promise<ApiResponse> {
+    await this.assertAccess(id, userId, role);
     const members = await this.projectsService.getMembers(id);
     return this.success(members);
   }

@@ -118,8 +118,10 @@ export class BusinessPlansController extends BaseController {
     return this.success(project, 'Kế hoạch đã được chuyển thành dự án');
   }
 
-  /** GET /business-plans/:planId/evaluation — get evaluation for a plan */
+  /** GET /business-plans/:planId/evaluation — get evaluation for a plan (admin only) */
   @Get(':planId/evaluation')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
   async getEvaluation(
     @Param('planId', ParseUUIDPipe) planId: string,
   ): Promise<ApiResponse> {

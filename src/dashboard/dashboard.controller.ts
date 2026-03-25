@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
 import { BaseController } from '../common/controllers/base.controller';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -25,9 +25,9 @@ export class DashboardController extends BaseController {
   /** GET /dashboard/recent-activity */
   @Get('recent-activity')
   async getRecentActivity(
-    @Query('limit') limit?: string,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
   ): Promise<ApiResponse> {
-    const parsedLimit = limit ? parseInt(limit, 10) : 10;
+    const parsedLimit = Math.min(limit, 100);
     const projects = await this.dashboardService.getRecentActivity(parsedLimit);
     return this.success(projects);
   }
